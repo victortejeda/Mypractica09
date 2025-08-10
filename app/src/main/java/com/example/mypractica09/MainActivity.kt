@@ -25,7 +25,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
+
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.content.ContextCompat
@@ -129,17 +129,12 @@ class AudioViewModel : ViewModel() {
         val outputDir = context.cacheDir
         try {
             audioFile = File.createTempFile("grabacion", ".3gp", outputDir)
-        } catch (e: IOException) {
+        } catch (_: IOException) {
             addLog("Error al crear archivo de grabación.")
             return
         }
 
-        mediaRecorder = (if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-            MediaRecorder(context)
-        } else {
-            @Suppress("DEPRECATION")
-            MediaRecorder()
-        }).apply {
+        mediaRecorder = MediaRecorder(context).apply {
             setAudioSource(MediaRecorder.AudioSource.MIC)
             setOutputFormat(MediaRecorder.OutputFormat.THREE_GPP)
             setAudioEncoder(MediaRecorder.AudioEncoder.AMR_NB)
@@ -149,8 +144,8 @@ class AudioViewModel : ViewModel() {
                 start()
                 _isRecording.value = true
                 addLog("Grabando conversación...")
-            } catch (e: IOException) {
-                addLog("Error al iniciar grabación: ${e.message}")
+            } catch (_: IOException) {
+                addLog("Error al iniciar grabación: Error de IO")
             }
         }
     }
@@ -173,12 +168,8 @@ class AudioViewModel : ViewModel() {
             put(MediaStore.Audio.Media.DISPLAY_NAME, audioFile?.name)
             put(MediaStore.Audio.Media.MIME_TYPE, "audio/3gpp")
             put(MediaStore.Audio.Media.DATE_ADDED, System.currentTimeMillis() / 1000)
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-                put(MediaStore.Audio.Media.RELATIVE_PATH, "Music/Recordings/")
-                put(MediaStore.Audio.Media.IS_PENDING, 1)
-            } else {
-                put(MediaStore.Audio.Media.DATA, audioFile?.absolutePath)
-            }
+            put(MediaStore.Audio.Media.RELATIVE_PATH, "Music/Recordings/")
+            put(MediaStore.Audio.Media.IS_PENDING, 1)
         }
 
         val uri = context.contentResolver.insert(MediaStore.Audio.Media.EXTERNAL_CONTENT_URI, values)
@@ -188,11 +179,9 @@ class AudioViewModel : ViewModel() {
                     val fileInput = audioFile?.inputStream()
                     fileInput?.copyTo(outputStream!!)
                 }
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-                    values.clear()
-                    values.put(MediaStore.Audio.Media.IS_PENDING, 0)
-                    context.contentResolver.update(it, values, null, null)
-                }
+                values.clear()
+                values.put(MediaStore.Audio.Media.IS_PENDING, 0)
+                context.contentResolver.update(it, values, null, null)
                 addLog("Grabación guardada en la librería multimedia.")
                 Toast.makeText(context, "Grabación guardada", Toast.LENGTH_SHORT).show()
             }
